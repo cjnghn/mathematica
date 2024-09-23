@@ -1,26 +1,38 @@
 <template>
   <div class="solver-container">
     <h2>Gauss-Jordan Method Solver</h2>
-    <p>Enter the size of the matrix (n x m):</p>
+    <p>Enter the number of equations (n):</p>
     <div class="input-container">
-      <label for="rows">Rows (n): </label>
-      <input type="number" v-model="rows" min="1" />
-      <label for="cols">Columns (m): </label>
-      <input type="number" v-model="cols" min="1" />
-      <button @click="createMatrix">Create Matrix</button>
+      <label for="rows">Equations (n): </label>
+      <input type="number" v-model.number="rows" min="1" />
+      <button @click="createEquations">Create Equations</button>
+      <button @click="fillExample">Fill Example</button>
     </div>
 
-    <!-- 행렬 입력 영역 -->
-    <div v-if="matrix.length > 0">
-      <h3>Matrix (n x m)</h3>
-      <table class="matrix-table">
-        <tr v-for="(row, i) in matrix" :key="i">
-          <td v-for="(cell, j) in row" :key="j">
-            <input v-model.number="matrix[i][j]" type="number" />
-          </td>
-        </tr>
-      </table>
-      <button @click="solveGaussJordan">Solve</button>
+    <!-- 방정식 입력 영역 -->
+    <div v-if="equations.length > 0">
+      <h3>Enter the coefficients for each equation:</h3>
+      <div class="equation-inputs">
+        <div v-for="(equation, i) in equations" :key="i" class="equation-row">
+          <span>Equation {{ i + 1 }}:</span>
+          <div class="coefficients">
+            <input
+              v-for="(coef, j) in equation.coefficients"
+              :key="j"
+              v-model.number="equations[i].coefficients[j]"
+              type="number"
+              placeholder="a{{j+1}}"
+            />
+            <span>=</span>
+            <input
+              v-model.number="equations[i].constant"
+              type="number"
+              placeholder="b"
+            />
+          </div>
+        </div>
+      </div>
+      <button @click="solveEquations">Solve</button>
     </div>
 
     <!-- 에러 메시지 -->
@@ -44,7 +56,7 @@
     </div>
 
     <!-- 해 결과 -->
-    <div v-if="solution && solution.length > 0">
+    <div v-if="solution && solution.length > 0 && !errorMessage">
       <h3>Solution:</h3>
       <div v-for="(sol, index) in solution" :key="index" class="solution">
         x{{ index + 1 }} = {{ sol !== "free" ? sol.toFixed(2) : "free" }}
@@ -54,119 +66,62 @@
 </template>
 
 <script>
+import { solveGaussJordan } from "../lib/gaussJordan";
+
 export default {
   data() {
     return {
-      rows: 3, // 기본 행의 수
-      cols: 4, // 기본 열의 수
-      matrix: [],
+      rows: 3, // 기본 방정식의 수
+      equations: [], // 방정식 입력을 위한 배열
       steps: [],
       currentStep: 0,
-      errorMessage: "", // 에러 메시지 저장
-      solution: [], // 최종 해 저장
+      errorMessage: "",
+      solution: [],
     };
   },
   methods: {
-    // 행렬 생성 함수
-    createMatrix() {
-      this.matrix = Array.from({ length: this.rows }, () =>
-        Array(this.cols).fill(0)
-      );
+    // 방정식 생성 함수
+    createEquations() {
+      this.equations = Array.from({ length: this.rows }, () => ({
+        coefficients: Array(this.rows).fill(0),
+        constant: 0,
+      }));
       this.steps = [];
       this.currentStep = 0;
-      this.errorMessage = ""; // 에러 메시지 초기화
-      this.solution = []; // 해 초기화
+      this.errorMessage = "";
+      this.solution = [];
     },
 
-    // 가우스-조던 소거법을 통해 행렬 풀기
-    solveGaussJordan() {
-      let matrix = JSON.parse(JSON.stringify(this.matrix)); // 행렬 복사
-      let n = matrix.length;
-      let m = matrix[0].length;
+    // 예제 입력 함수
+    fillExample() {
+      this.rows = 3;
+      this.equations = [
+        { coefficients: [2, 1, -1], constant: 8 },
+        { coefficients: [-3, -1, 2], constant: -11 },
+        { coefficients: [-2, 1, 2], constant: -3 },
+      ];
+    },
 
-      let stepSnapshots = [];
-      let freeVariables = new Set(); // 자유 변수 추적
+    // 방정식을 풀기 위해 행렬로 변환하고 Gauss-Jordan 적용
+    solveEquations() {
+      try {
+        // 입력된 방정식을 행렬로 변환
+        const matrix = this.equations.map((eq) => [
+          ...eq.coefficients,
+          eq.constant,
+        ]);
 
-      // 수치 정확도를 위해 0에 가까운 수는 0으로 처리
-      const isZero = (value) => Math.abs(value) < 1e-10;
-
-      // 상태 저장 함수: 현재 행렬 상태와 수행된 작업을 저장
-      const saveStep = (action) => {
-        stepSnapshots.push({
-          matrix: JSON.parse(JSON.stringify(matrix)),
-          action: action,
-        });
-      };
-
-      for (let i = 0; i < n; i++) {
-        // 대각선 원소를 0이 아닌 값으로 만들어야 함
-        if (isZero(matrix[i][i])) {
-          // 0이면 아래쪽 행과 교환 시도
-          let found = false;
-          for (let k = i + 1; k < n; k++) {
-            if (!isZero(matrix[k][i])) {
-              [matrix[i], matrix[k]] = [matrix[k], matrix[i]]; // 행 교환
-              found = true;
-              saveStep(`Row ${i + 1} and Row ${k + 1} swapped.`);
-              break;
-            }
-          }
-          if (!found) {
-            // 대각선 원소가 0이면 해당 변수가 자유 변수임
-            freeVariables.add(i);
-            saveStep(`Variable x${i + 1} is a free variable.`);
-            continue;
-          }
-        }
-
-        // 대각선 원소를 1로 만들기
-        let divisor = matrix[i][i];
-        if (!isZero(divisor)) {
-          for (let j = 0; j < m; j++) {
-            matrix[i][j] /= divisor;
-          }
-          saveStep(
-            `Row ${i + 1} divided by ${divisor.toFixed(2)} to make leading 1.`
-          );
-        }
-
-        // 다른 행들의 i번째 열을 0으로 만듦
-        for (let k = 0; k < n; k++) {
-          if (k !== i && !isZero(matrix[k][i])) {
-            let factor = matrix[k][i];
-            for (let j = 0; j < m; j++) {
-              matrix[k][j] -= factor * matrix[i][j];
-            }
-            saveStep(
-              `Row ${k + 1} updated to eliminate variable x${
-                i + 1
-              } (multiplied by ${factor.toFixed(2)}).`
-            );
-          }
-        }
-      }
-
-      this.steps = stepSnapshots; // 최종 스텝 저장
-      this.currentStep = 0;
-
-      // 해가 무수히 많은 경우 또는 유일한 해를 처리
-      this.solution = [];
-      for (let i = 0; i < n; i++) {
-        if (freeVariables.has(i)) {
-          this.solution.push("free"); // 자유 변수
-        } else if (isZero(matrix[i][i])) {
-          // 해가 없는 경우를 처리
-          if (!isZero(matrix[i][m - 1])) {
-            this.errorMessage = "No solutions exist for this system.";
-            return;
-          }
-        } else {
-          this.solution.push(matrix[i][m - 1]); // 유일한 해
-        }
-      }
-      if (freeVariables.size > 0) {
-        this.errorMessage =
-          "The system has infinitely many solutions due to free variables.";
+        const result = solveGaussJordan(matrix);
+        this.steps = result.steps;
+        this.solution = result.solution;
+        this.errorMessage = result.errorMessage;
+        this.currentStep = 0;
+      } catch (error) {
+        // 예기치 않은 오류 처리
+        this.errorMessage = error.message;
+        this.steps = [];
+        this.solution = [];
+        this.currentStep = 0;
       }
     },
 
@@ -186,3 +141,90 @@ export default {
   },
 };
 </script>
+
+<style>
+.solver-container {
+  max-width: 700px;
+  margin: 20px auto;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.input-container {
+  margin-bottom: 20px;
+}
+
+.equation-inputs {
+  margin-bottom: 20px;
+}
+
+.equation-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.coefficients {
+  display: flex;
+  align-items: center;
+}
+
+.coefficients input {
+  width: 60px;
+  margin: 0 5px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.coefficients span {
+  margin: 0 5px;
+  font-weight: bold;
+}
+
+.matrix-table {
+  margin: 20px auto;
+  border-collapse: collapse;
+}
+
+.matrix-table td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  width: 60px;
+  text-align: center;
+}
+
+.error-message {
+  color: red;
+  margin-top: 20px;
+}
+
+.solution {
+  margin-bottom: 5px;
+  color: #333;
+}
+
+button {
+  padding: 8px 16px;
+  margin: 5px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+h2,
+h3 {
+  color: #333;
+}
+
+p {
+  font-size: 1em;
+  color: #555;
+}
+</style>

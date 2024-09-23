@@ -1,3 +1,5 @@
+<script setup></script>
+
 <template>
   <div class="app-container">
     <nav>
@@ -17,22 +19,13 @@
       <!-- 현재 라우터에 의해 선택된 페이지를 로드 -->
       <router-view />
     </div>
-
-    <!-- 푸터 -->
-    <footer>
-      <!-- github 레포지토리 -->
-      <a
-        href="https://github.com/cjnghn/mathematica"
-        target="_blank"
-        rel="noopener noreferrer"
-        >GitHub Repository</a
-      >
-    </footer>
   </div>
 </template>
 
-<script>
-export default {
-  name: "App",
-};
-</script>
+<style>
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+</style>
