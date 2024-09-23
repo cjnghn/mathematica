@@ -1,15 +1,17 @@
 import { createRouter, createWebHistory } from "vue-router";
+import Home from "../pages/Home.vue";
+import GaussJordan from "../pages/GaussJordan.vue";
 
 const routes = [
   {
     path: "/",
     name: "Home",
-    component: () => import("../pages/Home.vue"),
+    component: Home,
   },
   {
     path: "/gauss-jordan",
     name: "GaussJordan",
-    component: () => import("../pages/GaussJordan.vue"),
+    component: GaussJordan,
   },
 ];
 

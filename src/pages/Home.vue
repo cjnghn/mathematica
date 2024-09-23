@@ -1,6 +1,5 @@
 <template>
   <div>
-    <h1>Mathematica</h1>
     <p>Explore various mathematical tools:</p>
     <ul>
       <li>

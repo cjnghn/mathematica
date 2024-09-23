@@ -1,8 +1,7 @@
 <template>
   <div class="app-container">
-    <!-- 사이드 네비게이션 -->
-    <nav class="sidebar">
-      <h2>Tools</h2>
+    <nav>
+      <h1>Mathematica</h1>
       <ul>
         <li>
           <router-link to="/">Home</router-link>
